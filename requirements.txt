@@ -1,3 +1,4 @@
 gradio
 gdown
-PyDrive2
+# A felirat beállítások mentéséhez
+# A fájlrendszeren fogjuk menteni
