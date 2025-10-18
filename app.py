@@ -101,11 +101,16 @@ with gr.Blocks(title="Render Videólejátszó") as demo:
     download_output = gr.Textbox(label="Letöltés Állapota", interactive=False)
     
     # 2. Videólejátszó
+    #
+    # --- JAVÍTÁS ITT ---
+    # Eltávolítottuk a 'subtitles=...' paramétert az inicializálásból,
+    # mert az TypeError-t okozott. A feliratot a download_files
+    # függvény 'gr.Video.update' parancsa fogja betölteni.
     player = gr.Video(
         label="A Videólejátszó (A felirat automatikusan megjelenik, ha létezik)",
-        width=800,
-        subtitles=SUBTITLE_PATH if os.path.exists(SUBTITLE_PATH) else None # Kezdeti felirat betöltése
+        width=800
     )
+    # --- JAVÍTÁS VÉGE ---
     
     # Kapcsolódás
     download_btn.click(
@@ -142,3 +147,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     # A Gradio a '0.0.0.0' címen kell, hogy fusson a Render-en
     demo.launch(server_name="0.0.0.0", server_port=port)
+
