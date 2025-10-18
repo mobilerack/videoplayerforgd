@@ -45,9 +45,17 @@ def process_links(video_link, subtitle_link):
         return results, None, None
 
     try:
-        # --- JAVÍTÁS ITT ---
-        # A helyes függvény a 'gdown.parse_url', nem a 'get_download_link'.
-        video_url_to_play = gdown.parse_url(video_link, fuzzy=True)
+        # --- JAVÍTÁS ITT (Kétlépéses módszer) ---
+        
+        # 1. LÉPÉS: Kinyerjük a fájl ID-t a linkből (a 'fuzzy=True' itt kell)
+        file_id = gdown.get_id(video_link, fuzzy=True)
+        
+        if not file_id:
+            raise Exception("Nem sikerült kinyerni a Google Drive Fájl ID-t a linkből. Ellenőrizd a linket.")
+            
+        # 2. LÉPÉS: Létrehozzuk a közvetlen letöltési (streamelési) URL-t az ID alapján
+        video_url_to_play = gdown.construct_download_url(id=file_id)
+        
         # --- JAVÍTÁS VÉGE ---
         
         if video_url_to_play:
