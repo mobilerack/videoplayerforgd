@@ -41,13 +41,12 @@ def download_files(video_link, subtitle_link):
     """
     results = []
     
-    # 1. Töröljük a korábbi fájlokat (helytakarékosság miatt)
+    # 1. Töröljük a korábbi fájlokat
     if os.path.exists(VIDEO_PATH): os.remove(VIDEO_PATH)
     if os.path.exists(SUBTITLE_PATH): os.remove(SUBTITLE_PATH)
     
     # 2. Videó letöltése
     try:
-        # --- JAVÍTÁS 2: fuzzy=True hozzáadva a megbízhatóbb link-kezelésért ---
         gdown_download(video_link, VIDEO_PATH, quiet=True, fuzzy=True)
         results.append(f"✅ Videó letöltve.")
     except Exception as e:
@@ -56,7 +55,6 @@ def download_files(video_link, subtitle_link):
     # 3. Felirat letöltése
     if subtitle_link:
         try:
-            # --- JAVÍTÁS 2: fuzzy=True hozzáadva a megbízhatóbb link-kezelésért ---
             gdown_download(subtitle_link, SUBTITLE_PATH, quiet=True, fuzzy=True)
             results.append(f"✅ Felirat letöltve.")
         except Exception as e:
@@ -68,8 +66,17 @@ def download_files(video_link, subtitle_link):
     video_file = VIDEO_PATH if os.path.exists(VIDEO_PATH) else None
     subtitle_file = SUBTITLE_PATH if os.path.exists(SUBTITLE_PATH) else None
     
-    # --- JAVÍTÁS 1: A .update() szintaxis cseréje Gradio 4.x kompatibilisre ---
-    return "\n".join(results), gr.Video(value=video_file, subtitles=subtitle_file)
+    # --- JAVÍTÁS ITT (Gradio 4 szintaxis) ---
+    # A Gradio 4 egy szótárat vár a 'value' argumentumban,
+    # amely tartalmazza a videót és a feliratot is.
+    video_update_data = {
+        "video": video_file,
+        "subtitles": subtitle_file
+    }
+    
+    # A visszatérési érték a frissített komponens
+    return "\n".join(results), gr.Video(value=video_update_data)
+    # --- JAVÍTÁS VÉGE ---
 
 def set_subtitle_style(color, size, background, position):
     """
@@ -99,7 +106,7 @@ with gr.Blocks(title="Render Videólejátszó") as demo:
     download_btn = gr.Button("⬇️ Fájlok Letöltése és Lejátszó Frissítése")
     download_output = gr.Textbox(label="Letöltés Állapota", interactive=False)
     
-    # 2. Videólejátszó (A korábbi 'subtitles' hiba javítása már benne van)
+    # 2. Videólejátszó (Itt helyesen, 'subtitles' nélkül hozzuk létre)
     player = gr.Video(
         label="A Videólejátszó (A felirat automatikusan megjelenik, ha létezik)",
         width=800
