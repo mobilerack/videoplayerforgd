@@ -1,7 +1,8 @@
 import streamlit as st
 import os
 import json
-import gdown # A teljes gdown könyvtárat importáljuk
+import gdown # A felirat letöltéséhez továbbra is kell
+import re    # Ezt az új modult használjuk az ID kinyeréséhez
 
 # --- Fájl- és Beállításkezelés ---
 TEMP_DIR = "data"
@@ -27,6 +28,22 @@ def save_settings(settings):
 
 # --- Link-kezelő Függvény (Javítva) ---
 
+def get_id_from_url(url):
+    """
+    Manuálisan kinyeri a Google Drive fájl ID-t a linkből regex segítségével.
+    Ez kiváltja a 'gdown.get_id' funkciót.
+    """
+    # Ez a regex minta megkeresi az ID-t a /d/ es /file/id/ linkekben is
+    match = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
+    if match:
+        return match.group(1)
+    
+    match = re.search(r'id=([a-zA-Z0-9_-]+)', url)
+    if match:
+        return match.group(1)
+        
+    return None
+
 def process_links(video_link, subtitle_link):
     """
     Megszerzi a videó streamelhető URL-jét és letölti a feliratfájlt.
@@ -45,16 +62,16 @@ def process_links(video_link, subtitle_link):
         return results, None, None
 
     try:
-        # --- JAVÍTÁS ITT (Kétlépéses módszer) ---
+        # --- JAVÍTÁS ITT (Manuális módszer) ---
         
-        # 1. LÉPÉS: Kinyerjük a fájl ID-t a linkből (a 'fuzzy=True' itt kell)
-        file_id = gdown.get_id(video_link, fuzzy=True)
+        # 1. LÉPÉS: Manuálisan kinyerjük a fájl ID-t a linkből
+        file_id = get_id_from_url(video_link)
         
         if not file_id:
             raise Exception("Nem sikerült kinyerni a Google Drive Fájl ID-t a linkből. Ellenőrizd a linket.")
             
-        # 2. LÉPÉS: Létrehozzuk a közvetlen letöltési (streamelési) URL-t az ID alapján
-        video_url_to_play = gdown.construct_download_url(id=file_id)
+        # 2. LÉPÉS: Manuálisan létrehozzuk a közvetlen streamelési URL-t
+        video_url_to_play = f"https://drive.google.com/uc?id={file_id}"
         
         # --- JAVÍTÁS VÉGE ---
         
@@ -66,7 +83,7 @@ def process_links(video_link, subtitle_link):
         results.append(f"❌ Hiba a videó URL megszerzésekor: {e}")
         return results, None, None
 
-    # 3. Felirat letöltése (Ez kicsi, ezt letölthetjük)
+    # 3. Felirat letöltése (Ez kicsi, ezt letölthetjük, ehhez a régi gdown is jó)
     if subtitle_link:
         try:
             gdown.download(subtitle_link, SUBTITLE_PATH, quiet=True, fuzzy=True)
@@ -103,7 +120,7 @@ with st.container(border=True):
     
     # Gomb logikája
     if process_btn:
-        with st.spinner("Linkek feldolgozása..."):
+        with st.spinner("Linkek feldogozása..."):
             results, video_url, sub_path = process_links(video_input, subtitle_input)
             
             # Eltároljuk az eredményt a session state-ben
@@ -118,7 +135,7 @@ st.info(st.session_state.status_message) # Mindig kiírjuk az utolsó státuszt
 if st.session_state.video_url:
     st.video(st.session_state.video_url, subtitles=st.session_state.subtitle_path)
 else:
-    st.write("A videó a sikeres link-feldolgozás után jelenik meg itt.")
+    st.write("A videó a sikeres link-feldgozás után jelenik meg itt.")
 
 st.divider()
 
