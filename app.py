@@ -6,7 +6,6 @@ import gdown # A teljes gdown könyvtárat importáljuk
 # --- Fájl- és Beállításkezelés ---
 TEMP_DIR = "data"
 os.makedirs(TEMP_DIR, exist_ok=True)
-# A VIDEO_PATH-ra már nincs szükségünk, csak a feliratra
 SUBTITLE_PATH = os.path.join(TEMP_DIR, "subtitle.vtt") 
 SETTINGS_FILE = os.path.join(TEMP_DIR, "settings.json")
 
@@ -46,12 +45,15 @@ def process_links(video_link, subtitle_link):
         return results, None, None
 
     try:
-        # A gdown megszerzi a közvetlen letöltési linket
-        video_url_to_play = gdown.get_download_link(video_link, fuzzy=True)
+        # --- JAVÍTÁS ITT ---
+        # A helyes függvény a 'gdown.parse_url', nem a 'get_download_link'.
+        video_url_to_play = gdown.parse_url(video_link, fuzzy=True)
+        # --- JAVÍTÁS VÉGE ---
+        
         if video_url_to_play:
             results.append(f"✅ Videó stream URL sikeresen megszerezve.")
         else:
-            raise Exception("Nem sikerült a letöltési link kinyerése.")
+            raise Exception("Nem sikerült a letöltési link kinyerése (lehet, hogy a link nem nyilvános?).")
     except Exception as e:
         results.append(f"❌ Hiba a videó URL megszerzésekor: {e}")
         return results, None, None
