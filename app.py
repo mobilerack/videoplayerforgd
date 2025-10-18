@@ -66,17 +66,19 @@ def download_files(video_link, subtitle_link):
     video_file = VIDEO_PATH if os.path.exists(VIDEO_PATH) else None
     subtitle_file = SUBTITLE_PATH if os.path.exists(SUBTITLE_PATH) else None
     
-    # --- JAVÍTÁS ITT (Gradio 4 szintaxis) ---
-    # A Gradio 4 egy szótárat vár a 'value' argumentumban,
-    # amely tartalmazza a videót és a feliratot is.
-    video_update_data = {
-        "video": video_file,
+    # --- VÉGLEGES JAVÍTÁS (Gradio 4 szintaxis) ---
+    # Egy szótárat adunk vissza, ami a 'player' komponens
+    # frissítendő tulajdonságait (properties) tartalmazza.
+    # A Gradio ezt automatikusan kezeli.
+    update_dict = {
+        "value": video_file,
         "subtitles": subtitle_file
     }
     
-    # A visszatérési érték a frissített komponens
-    return "\n".join(results), gr.Video(value=video_update_data)
+    # A visszatérési érték a string (a textboxnak) és a szótár (a videónak).
+    return "\n".join(results), update_dict
     # --- JAVÍTÁS VÉGE ---
+
 
 def set_subtitle_style(color, size, background, position):
     """
@@ -90,6 +92,10 @@ def set_subtitle_style(color, size, background, position):
         "position": position
     })
     save_settings(subtitle_settings)
+    
+    # A Gradio 4-ben a stílusfrissítés is így néz ki:
+    # Visszaadunk egy szótárat, ami az új tulajdonságokat tartalmazza.
+    # Mivel ez most nem frissít semmit a UI-n, csak egy stringet adunk vissza.
     return f"✅ Feliratstílus mentve! (A megjelenés a böngészőtől függ)"
 
 # --- Gradio UI felépítése ---
@@ -106,7 +112,7 @@ with gr.Blocks(title="Render Videólejátszó") as demo:
     download_btn = gr.Button("⬇️ Fájlok Letöltése és Lejátszó Frissítése")
     download_output = gr.Textbox(label="Letöltés Állapota", interactive=False)
     
-    # 2. Videólejátszó (Itt helyesen, 'subtitles' nélkül hozzuk létre)
+    # 2. Videólejátszó (Helyesen, 'subtitles' nélkül létrehozva)
     player = gr.Video(
         label="A Videólejátszó (A felirat automatikusan megjelenik, ha létezik)",
         width=800
