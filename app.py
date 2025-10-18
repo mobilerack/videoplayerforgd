@@ -47,7 +47,8 @@ def download_files(video_link, subtitle_link):
     
     # 2. Videó letöltése
     try:
-        gdown_download(video_link, VIDEO_PATH, quiet=True)
+        # --- JAVÍTÁS 2: fuzzy=True hozzáadva a megbízhatóbb link-kezelésért ---
+        gdown_download(video_link, VIDEO_PATH, quiet=True, fuzzy=True)
         results.append(f"✅ Videó letöltve.")
     except Exception as e:
         results.append(f"❌ Hiba a videó letöltésekor: Ellenőrizd a linket és a jogosultságokat.")
@@ -55,7 +56,8 @@ def download_files(video_link, subtitle_link):
     # 3. Felirat letöltése
     if subtitle_link:
         try:
-            gdown_download(subtitle_link, SUBTITLE_PATH, quiet=True)
+            # --- JAVÍTÁS 2: fuzzy=True hozzáadva a megbízhatóbb link-kezelésért ---
+            gdown_download(subtitle_link, SUBTITLE_PATH, quiet=True, fuzzy=True)
             results.append(f"✅ Felirat letöltve.")
         except Exception as e:
             results.append(f"❌ Hiba a felirat letöltésekor.")
@@ -66,7 +68,8 @@ def download_files(video_link, subtitle_link):
     video_file = VIDEO_PATH if os.path.exists(VIDEO_PATH) else None
     subtitle_file = SUBTITLE_PATH if os.path.exists(SUBTITLE_PATH) else None
     
-    return "\n".join(results), gr.Video.update(value=video_file, subtitles=subtitle_file)
+    # --- JAVÍTÁS 1: A .update() szintaxis cseréje Gradio 4.x kompatibilisre ---
+    return "\n".join(results), gr.Video(value=video_file, subtitles=subtitle_file)
 
 def set_subtitle_style(color, size, background, position):
     """
@@ -80,11 +83,7 @@ def set_subtitle_style(color, size, background, position):
         "position": position
     })
     save_settings(subtitle_settings)
-    
-    # Mivel a Gradio natív lejátszója nem támogatja a dinamikus CSS-t,
-    # ez a lépés csak a beállítások perzisztens mentését biztosítja.
-    # A felhasználó láthatja, hogy a beállítás mentve lett.
-    return f"✅ Feliratstílus mentve! Ez a beállítás legközelebb is elérhető lesz (de a megjelenítés a böngésző beállításaitól függ)."
+    return f"✅ Feliratstílus mentve! (A megjelenés a böngészőtől függ)"
 
 # --- Gradio UI felépítése ---
 
@@ -100,17 +99,11 @@ with gr.Blocks(title="Render Videólejátszó") as demo:
     download_btn = gr.Button("⬇️ Fájlok Letöltése és Lejátszó Frissítése")
     download_output = gr.Textbox(label="Letöltés Állapota", interactive=False)
     
-    # 2. Videólejátszó
-    #
-    # --- JAVÍTÁS ITT ---
-    # Eltávolítottuk a 'subtitles=...' paramétert az inicializálásból,
-    # mert az TypeError-t okozott. A feliratot a download_files
-    # függvény 'gr.Video.update' parancsa fogja betölteni.
+    # 2. Videólejátszó (A korábbi 'subtitles' hiba javítása már benne van)
     player = gr.Video(
         label="A Videólejátszó (A felirat automatikusan megjelenik, ha létezik)",
         width=800
     )
-    # --- JAVÍTÁS VÉGE ---
     
     # Kapcsolódás
     download_btn.click(
@@ -143,8 +136,5 @@ with gr.Blocks(title="Render Videólejátszó") as demo:
 
 # Az alkalmazás elindítása
 if __name__ == "__main__":
-    # Renderen a portot a környezeti változó (PORT) határozza meg
     port = int(os.environ.get("PORT", 7860))
-    # A Gradio a '0.0.0.0' címen kell, hogy fusson a Render-en
     demo.launch(server_name="0.0.0.0", server_port=port)
-
