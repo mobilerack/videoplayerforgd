@@ -1,4 +1,2 @@
-gradio
+streamlit
 gdown
-# A felirat beállítások mentéséhez
-# A fájlrendszeren fogjuk menteni
