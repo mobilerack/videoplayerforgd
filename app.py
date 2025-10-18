@@ -1,9 +1,9 @@
-import gradio as gr
+import streamlit as st
 import os
 import json
 from gdown import download as gdown_download
 
-# --- Fájl- és Beállításkezelés ---
+# --- Fájl- és Beállításkezelés (Változatlan) ---
 TEMP_DIR = "data"
 os.makedirs(TEMP_DIR, exist_ok=True)
 VIDEO_PATH = os.path.join(TEMP_DIR, "video.mp4")
@@ -18,6 +18,8 @@ DEFAULT_SETTINGS = {
     "position": "bottom"
 }
 
+# --- Beállításkezelő Függvények (Változatlan) ---
+
 def load_settings():
     """Beolvassa a mentett felirat beállításokat a JSON fájlból."""
     if os.path.exists(SETTINGS_FILE):
@@ -30,14 +32,12 @@ def save_settings(settings):
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f)
 
-# A kezdeti beállítások betöltése
-subtitle_settings = load_settings()
-
-# --- Függvények ---
+# --- Letöltő Függvény (Módosítva) ---
 
 def download_files(video_link, subtitle_link):
     """
-    Letölti a videót és a feliratfájlt a nyilvános Google Drive linkekről.
+    Letölti a videót és a feliratfájlt.
+    A státusz üzeneteket egy listában adja vissza.
     """
     results = []
     
@@ -46,11 +46,16 @@ def download_files(video_link, subtitle_link):
     if os.path.exists(SUBTITLE_PATH): os.remove(SUBTITLE_PATH)
     
     # 2. Videó letöltése
+    if not video_link:
+        results.append("❌ Hiba: A videó link megadása kötelező.")
+        return results
+
     try:
         gdown_download(video_link, VIDEO_PATH, quiet=True, fuzzy=True)
         results.append(f"✅ Videó letöltve.")
     except Exception as e:
-        results.append(f"❌ Hiba a videó letöltésekor: Ellenőrizd a linket és a jogosultságokat.")
+        results.append(f"❌ Hiba a videó letöltésekor: {e}")
+        return results # Ha a videó sikertelen, a feliratot már nem is próbáljuk
 
     # 3. Felirat letöltése
     if subtitle_link:
@@ -58,96 +63,84 @@ def download_files(video_link, subtitle_link):
             gdown_download(subtitle_link, SUBTITLE_PATH, quiet=True, fuzzy=True)
             results.append(f"✅ Felirat letöltve.")
         except Exception as e:
-            results.append(f"❌ Hiba a felirat letöltésekor.")
+            results.append(f"❌ Hiba a felirat letöltésekor: {e}")
     else:
          results.append("ℹ️ Felirat link nem lett megadva.")
+         
+    return results
 
-    # A lejátszó frissítéséhez szükséges adatok:
-    video_file = VIDEO_PATH if os.path.exists(VIDEO_PATH) else None
-    subtitle_file = SUBTITLE_PATH if os.path.exists(SUBTITLE_PATH) else None
+# --- Streamlit Munkamenet Állapot (Session State) Inicializálása ---
+# Ez tárolja az adatokat a szkript újrafuttatásai között
+
+if 'status_message' not in st.session_state:
+    st.session_state.status_message = "Még nem történt letöltés."
+
+if 'subtitle_settings' not in st.session_state:
+    st.session_state.subtitle_settings = load_settings()
+
+# --- Streamlit UI Felépítése ---
+
+st.set_page_config(page_title="Streamlit Videólejátszó", layout="wide")
+st.title("🎬 Streamlit Állandó Videólejátszó")
+st.markdown("Ez az alkalmazás állandóan elérhető a Render-en. Másold be a **nyilvános** Google Drive linkeket.")
+
+# 1. Beviteli mezők
+with st.container(border=True):
+    video_input = st.text_input("Google Drive Videó Nyilvános Linkje", placeholder="Pl. https://drive.google.com/file/d/...")
+    subtitle_input = st.text_input("Google Drive Felirat Nyilvános Linkje (Opcionális)", placeholder="Pl. https://drive.google.com/file/d/...")
     
-    # --- VÉGLEGES JAVÍTÁS (Gradio 4 szintaxis) ---
-    # Egy szótárat adunk vissza, ami a 'player' komponens
-    # frissítendő tulajdonságait (properties) tartalmazza.
-    # A Gradio ezt automatikusan kezeli.
-    update_dict = {
-        "value": video_file,
-        "subtitles": subtitle_file
-    }
+    download_btn = st.button("⬇️ Fájlok Letöltése és Lejátszó Frissítése")
     
-    # A visszatérési érték a string (a textboxnak) és a szótár (a videónak).
-    return "\n".join(results), update_dict
-    # --- JAVÍTÁS VÉGE ---
+    # Letöltés gomb logikája
+    if download_btn:
+        with st.spinner("Letöltés folyamatban... Ez eltarthat egy ideig."):
+            results = download_files(video_input, subtitle_input)
+            # Elmentjük az eredményt a session state-be, hogy az újrafuttatás után is meglegyen
+            st.session_state.status_message = "\n".join(results)
+        # st.rerun() helyett a Streamlit automatikusan újra fog futni
+        # a gombnyomás után, és frissíti a UI-t.
 
+# 2. Státusz és Videólejátszó
+st.info(st.session_state.status_message) # Mindig kiírjuk az utolsó státuszt
 
-def set_subtitle_style(color, size, background, position):
-    """
-    Elmenti a felhasználó felirat beállításait a JSON fájlba.
-    """
-    global subtitle_settings
-    subtitle_settings.update({
-        "color": color,
-        "size": size,
-        "background": background,
-        "position": position
-    })
-    save_settings(subtitle_settings)
+video_file = VIDEO_PATH if os.path.exists(VIDEO_PATH) else None
+subtitle_file = SUBTITLE_PATH if os.path.exists(SUBTITLE_PATH) else None
+
+if video_file:
+    st.video(video_file, subtitles=subtitle_file)
+else:
+    st.write("A videó a sikeres letöltés után jelenik meg itt.")
+
+st.divider()
+
+# 3. Felirat Beállítások (Perzisztens Mentéssel)
+with st.expander("🎨 Felirat Stílus Beállítások (Perzisztens Mentés)"):
+    settings = st.session_state.subtitle_settings
     
-    # A Gradio 4-ben a stílusfrissítés is így néz ki:
-    # Visszaadunk egy szótárat, ami az új tulajdonságokat tartalmazza.
-    # Mivel ez most nem frissít semmit a UI-n, csak egy stringet adunk vissza.
-    return f"✅ Feliratstílus mentve! (A megjelenés a böngészőtől függ)"
-
-# --- Gradio UI felépítése ---
-
-with gr.Blocks(title="Render Videólejátszó") as demo:
-    gr.Markdown("# 🎬 Render Állandó Videólejátszó")
-    gr.Markdown("Ez az alkalmazás állandóan elérhető a Render-en. Másold be a **nyilvános** Google Drive linkeket.")
+    # A Streamlit UI elemek
+    color_input = st.text_input("Betűszín (CSS kód)", value=settings["color"])
     
-    # 1. Beviteli mezők
-    with gr.Row():
-        video_input = gr.Textbox(label="Google Drive Videó Nyilvános Linkje", placeholder="Pl. https://drive.google.com/file/d/...")
-        subtitle_input = gr.Textbox(label="Google Drive Felirat Nyilvános Linkje (Opcionális)", placeholder="Pl. https://drive.google.com/file/d/...")
+    # A 'radio' indexét be kell állítani
+    size_options = ["small", "medium", "large"]
+    size_index = size_options.index(settings["size"]) if settings["size"] in size_options else 1
+    size_input = st.radio("Méret", size_options, index=size_index)
+    
+    background_input = st.text_input("Háttér (CSS kód)", value=settings["background"])
+
+    pos_options = ["top", "bottom"]
+    pos_index = pos_options.index(settings["position"]) if settings["position"] in pos_options else 1
+    position_input = st.radio("Elhelyezkedés", pos_options, index=pos_index)
         
-    download_btn = gr.Button("⬇️ Fájlok Letöltése és Lejátszó Frissítése")
-    download_output = gr.Textbox(label="Letöltés Állapota", interactive=False)
-    
-    # 2. Videólejátszó (Helyesen, 'subtitles' nélkül létrehozva)
-    player = gr.Video(
-        label="A Videólejátszó (A felirat automatikusan megjelenik, ha létezik)",
-        width=800
-    )
-    
-    # Kapcsolódás
-    download_btn.click(
-        fn=download_files,
-        inputs=[video_input, subtitle_input],
-        outputs=[download_output, player]
-    )
+    style_btn = st.button("💾 Felirat Stílus Mentése")
 
-    gr.Markdown("---")
-    
-    # 3. Felirat Beállítások (Perzisztens Mentéssel)
-    settings = load_settings()
-    gr.Markdown("## 🎨 Felirat Stílus Beállítások (Perzisztens Mentés)")
-
-    with gr.Row():
-        color_input = gr.Textbox(label="Betűszín (CSS kód)", value=settings["color"])
-        size_input = gr.Radio(["small", "medium", "large"], label="Méret", value=settings["size"])
-        background_input = gr.Textbox(label="Háttér (CSS kód)", value=settings["background"])
-        position_input = gr.Radio(["top", "bottom"], label="Elhelyezkedés", value=settings["position"])
-        
-    style_btn = gr.Button("💾 Felirat Stílus Mentése")
-    style_output = gr.Textbox(label="Stílus Mentés Állapota", interactive=False)
-
-    style_btn.click(
-        fn=set_subtitle_style,
-        inputs=[color_input, size_input, background_input, position_input],
-        outputs=style_output
-    )
-
-
-# Az alkalmazás elindítása
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
-    demo.launch(server_name="0.0.0.0", server_port=port)
+    if style_btn:
+        new_settings = {
+            "color": color_input,
+            "size": size_input,
+            "background": background_input,
+            "position": position_input
+        }
+        save_settings(new_settings)
+        # Frissítjük a session state-et is
+        st.session_state.subtitle_settings = new_settings
+        st.success("✅ Feliratstílus mentve! (A megjelenés a böngészőtől függ)")
